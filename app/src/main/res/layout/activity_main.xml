@@ -5,7 +5,7 @@
     android:orientation="vertical"
     tools:context=".MainActivity">
 
-    <com.alexwan.blog.circledemo.widget.CustomView
+    <com.alexwan.blog.circledemo.widget.CircleDemoView
         android:id="@+id/custom_view"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

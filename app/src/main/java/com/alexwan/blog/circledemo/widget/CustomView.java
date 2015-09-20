@@ -56,30 +56,32 @@ public class CustomView extends View {
         paint.setStyle(Paint.Style.STROKE);
         // 画笔宽度
         paint.setStrokeWidth(10);
-//        handler.obtainMessage().sendToTarget();
-        handler.sendEmptyMessageDelayed(1, 60);
+        /***--动态圆--***/
+//        handler.sendEmptyMessageDelayed(1, 60);
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
+        /***--动态圆--***/
         canvas.drawCircle(width / 2, height / 2, radius, paint);
     }
-    private Handler handler = new Handler(){
-        @Override
-        public void handleMessage(Message msg) {
-            if(radius <= 200){
-                radius += 10;
-            }else{
-                radius = 10;
-            }
-            // 每500毫秒发送一个消息
-            Log.d(TAG , "radius : " + radius);
-            // 半径改变后 调用invalidate(); 重新绘制
-            invalidate();
-            handler.sendEmptyMessageDelayed(1 , 60);
-            super.handleMessage(msg);
-        }
-    };
+    /***--动态圆--***/
+//    private Handler handler = new Handler(){
+//        @Override
+//        public void handleMessage(Message msg) {
+//            if(radius <= 200){
+//                radius += 10;
+//            }else{
+//                radius = 10;
+//            }
+//            // 每500毫秒发送一个消息
+//            Log.d(TAG , "radius : " + radius);
+//            // 半径改变后 调用invalidate(); 重新绘制
+//            invalidate();
+//            handler.sendEmptyMessageDelayed(1 , 60);
+//            super.handleMessage(msg);
+//        }
+//    };
 }
 
