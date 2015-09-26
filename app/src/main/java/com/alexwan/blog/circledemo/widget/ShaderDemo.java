@@ -8,9 +8,11 @@ import android.graphics.Color;
 import android.graphics.LinearGradient;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
+import android.graphics.RadialGradient;
 import android.graphics.Shader;
 import android.graphics.SweepGradient;
-import android.os.Debug;
 import android.os.Handler;
 import android.os.Message;
 import android.util.AttributeSet;
@@ -27,7 +29,7 @@ import com.alexwan.blog.circledemo.util.ScreenUtil;
  */
 public class ShaderDemo extends View {
     private int[] screenSize;
-    private Paint mBitmapPaint, mSweepPaint, mLinearPaint;
+    private Paint mBitmapPaint, mSweepPaint, mLinearPaint, mRadialPaint, mShaderPaint;
     private Bitmap mBitmap;
     private static final int RECT_SIZE = 400;
     private int width, height, divider;
@@ -35,6 +37,9 @@ public class ShaderDemo extends View {
     private Matrix mMatrix;
     private static final String TAG = ShaderDemo.class.getSimpleName();
     private BitmapShader mBitmapShader;
+    private Bitmap mRadailBitmap, mRefBitmap;
+    private Paint mXfermodePaint;
+    private PorterDuffXfermode mPorterDuffXfermode, mXfermode;
 
     public ShaderDemo(Context context) { this(context, null); }
 
@@ -50,13 +55,22 @@ public class ShaderDemo extends View {
         mLinearPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
         // 梯度
         mSweepPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
-        //
+        // 径向
+        mRadialPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
+
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inJustDecodeBounds = true;
-        BitmapFactory.decodeResource(context.getResources(), R.drawable.saber, options);
-        options.inSampleSize = 8;
+        options.inSampleSize = 4;
         options.inJustDecodeBounds = false;
-        mBitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.saber, options); /**/
+        // 原图
+        mBitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.mai1, options);
+        // 根据原图生成径向阴影层
+        mRadailBitmap = Bitmap.createBitmap(mBitmap.getWidth(), mBitmap.getHeight(), Bitmap.Config.ARGB_8888);
+        Matrix refMatrix = new Matrix();
+        refMatrix.setScale(1f, -1f);
+        // 根据原图生成倒影图
+        mRefBitmap = Bitmap.createBitmap(mBitmap, 0, 0, mBitmap.getWidth(), mBitmap.getHeight(), refMatrix, true);
+
         if (AppProfile.DEBUG) {
             /* Log.d(TAG , "Bitmap width : "+mBitmap.getWidth());*/
         }
@@ -72,13 +86,25 @@ public class ShaderDemo extends View {
         mBitmapPaint.setShader(mBitmapShader);
         // LinearGradient：线性渐变
         mLinearPaint.setShader(new LinearGradient(divider, divider, divider + width, divider + height, Color.RED, Color
-                .YELLOW,
-                Shader.TileMode.REPEAT));
+                .YELLOW, Shader.TileMode.REPEAT));
+
+        // 混合模式Paint
+        mXfermodePaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
+        mXfermodePaint.setShader(new LinearGradient(divider, (divider + height) * 2 + divider + mBitmap.getHeight(),
+                divider + mBitmap.getWidth(), (divider + height) * 2 + divider + mBitmap.getHeight() * 2, 0xAAff0000,
+                Color.TRANSPARENT, Shader.TileMode.CLAMP));
         /* SweepGradient：梯度渐变*/
         mSweepPaint.setShader(
                 new SweepGradient(screenSize[0] - width / 2 - divider, divider + height / 2, Color.RED, Color
-                        .YELLOW)); /**/
+                        .YELLOW));
+        // 径向渐变
+        RadialGradient rg = new RadialGradient(divider + mBitmap.getWidth() / 2, (divider + height) * 2 + divider
+                + mBitmap.getHeight() / 2 , mBitmap.getWidth() / 2, new int[] { 0, 0, 0xAA000000 }, new float[] { 0F,
+                0.7F, 1.0F }, Shader.TileMode.CLAMP);
+        mRadialPaint.setShader(rg);
         mHander.sendEmptyMessageDelayed(0, 500);
+        mPorterDuffXfermode = new PorterDuffXfermode(PorterDuff.Mode.DST_IN);
+        mXfermode = new PorterDuffXfermode(PorterDuff.Mode.SCREEN);
     }
 
     @Override
@@ -95,6 +121,22 @@ public class ShaderDemo extends View {
         canvas.drawRect(divider, divider * 2 + height, screenWidth - divider, divider * 2 + height * 2,
                 mBitmapPaint);
         canvas.restore();
+        // 原图
+        canvas.drawBitmap(mBitmap, divider, (divider + height) * 2 + divider, mBitmapPaint);
+        //
+        canvas.drawRect(divider, (divider + height) * 2 + divider, divider + mBitmap.getWidth(), (divider +
+                height) * 2 + divider + mBitmap.getHeight(), mRadialPaint);
+        // 新建图层
+        int src = canvas.saveLayer(divider, (divider + height) * 2 + divider + mBitmap.getHeight(), divider +
+                mBitmap.getWidth(), (divider + height) * 3 + mBitmap.getHeight(), null, Canvas.ALL_SAVE_FLAG);
+        //画倒影图
+        canvas.drawBitmap(mRefBitmap, divider, (divider + height) * 2 + mBitmap.getHeight() + divider, null);
+        // 混合模式
+        mXfermodePaint.setXfermode(mPorterDuffXfermode);
+        canvas.drawRect(divider, (divider + height) * 2 + divider + mBitmap.getHeight(), divider +
+                mBitmap.getWidth(), (divider + height) * 3 + mBitmap.getHeight(), mXfermodePaint);
+        mXfermodePaint.setXfermode(null);
+        canvas.restoreToCount(src);
     }
 
     @Override
@@ -117,8 +159,8 @@ public class ShaderDemo extends View {
                     mMatrix = new Matrix();
                     mMatrix.setTranslate(divider, divider * 2 + height);
                     mBitmapShader.setLocalMatrix(mMatrix);
-                    if(AppProfile.DEBUG){
-                        Log.d(TAG , "Matrix : "+ mMatrix.toString() );
+                    if (AppProfile.DEBUG) {
+                        Log.d(TAG, "Matrix : " + mMatrix.toString());
                     }
                     mBitmapPaint.setShader(mBitmapShader);
                     break;
@@ -127,16 +169,16 @@ public class ShaderDemo extends View {
                     mMatrix = new Matrix();
                     mMatrix.setTranslate(divider, divider * 2 + height);
                     mBitmapShader.setLocalMatrix(mMatrix);
-                    if(AppProfile.DEBUG){
-                        Log.d(TAG , "Matrix : "+ mMatrix.toString() );
+                    if (AppProfile.DEBUG) {
+                        Log.d(TAG, "Matrix : " + mMatrix.toString());
                     }
                     mBitmapPaint.setShader(mBitmapShader);
                     break;
                 case 2:
                     mMatrix = new Matrix();
                     mMatrix.setTranslate(divider, divider * 2 + height);
-                    if(AppProfile.DEBUG){
-                        Log.d(TAG , "Matrix : "+ mMatrix.toString() );
+                    if (AppProfile.DEBUG) {
+                        Log.d(TAG, "Matrix : " + mMatrix.toString());
                     }
                     mBitmapShader = new BitmapShader(mBitmap, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT);
                     mBitmapShader.setLocalMatrix(mMatrix);
@@ -145,8 +187,8 @@ public class ShaderDemo extends View {
                 case 3:
                     mMatrix = new Matrix();
                     mMatrix.setTranslate(divider, divider * 2 + height);
-                    if(AppProfile.DEBUG){
-                        Log.d(TAG , "Matrix : "+ mMatrix.toString() );
+                    if (AppProfile.DEBUG) {
+                        Log.d(TAG, "Matrix : " + mMatrix.toString());
                     }
                     mBitmapShader = new BitmapShader(mBitmap, Shader.TileMode.MIRROR, Shader.TileMode.CLAMP);
                     mBitmapShader.setLocalMatrix(mMatrix);
