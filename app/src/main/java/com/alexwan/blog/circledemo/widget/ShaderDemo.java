@@ -1,4 +1,5 @@
 package com.alexwan.blog.circledemo.widget;
+import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -23,6 +24,8 @@ import com.alexwan.blog.circledemo.R;
 import com.alexwan.blog.circledemo.help.AppProfile;
 import com.alexwan.blog.circledemo.util.ScreenUtil;
 
+import java.lang.ref.SoftReference;
+
 
 /**
  * BitmapShaderDemo
@@ -41,14 +44,18 @@ public class ShaderDemo extends View {
     private Paint mXfermodePaint;
     private PorterDuffXfermode mPorterDuffXfermode, mXfermode;
 
-    public ShaderDemo(Context context) { this(context, null); }
+    public ShaderDemo(Context context) throws Exception { this(context, null); }
 
-    public ShaderDemo(Context context, AttributeSet attrs) {
+    public ShaderDemo(Context context, AttributeSet attrs) throws Exception {
         super(context, attrs);
+        if(! (context instanceof  Activity)){
+            throw  new Exception("context not activity exception");
+        }
         init(context);
     }
 
     private void init(Context context) {
+        mHander = new MyHandler((Activity)context);
         screenSize = ScreenUtil.getScreenSize(context);
         mBitmapPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
         // 线性
@@ -63,7 +70,7 @@ public class ShaderDemo extends View {
         options.inSampleSize = 4;
         options.inJustDecodeBounds = false;
         // 原图
-        mBitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.mai1, options);
+        mBitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.sakura, options);
         // 根据原图生成径向阴影层
         mRadailBitmap = Bitmap.createBitmap(mBitmap.getWidth(), mBitmap.getHeight(), Bitmap.Config.ARGB_8888);
         Matrix refMatrix = new Matrix();
@@ -99,8 +106,8 @@ public class ShaderDemo extends View {
                         .YELLOW));
         // 径向渐变
         RadialGradient rg = new RadialGradient(divider + mBitmap.getWidth() / 2, (divider + height) * 2 + divider
-                + mBitmap.getHeight() / 2 , mBitmap.getWidth() / 2, new int[] { 0, 0, 0xAA000000 }, new float[] { 0F,
-                0.7F, 1.0F }, Shader.TileMode.CLAMP);
+                + mBitmap.getHeight() / 2, mBitmap.getWidth() / 2, new int[]{0, 0, 0x2F000000}, new float[]{0F,
+                0.7F, 1.0F}, Shader.TileMode.CLAMP);
         mRadialPaint.setShader(rg);
         mHander.sendEmptyMessageDelayed(0, 500);
         mPorterDuffXfermode = new PorterDuffXfermode(PorterDuff.Mode.DST_IN);
@@ -148,7 +155,12 @@ public class ShaderDemo extends View {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
     }
 
-    private Handler mHander = new Handler() {
+    private Handler mHander;
+    private class MyHandler extends Handler{
+        SoftReference<Activity> mActivityReference;
+        MyHandler(Activity activity){
+            mActivityReference = new SoftReference<Activity>(activity);
+        }
         @Override
         public void handleMessage(Message msg) {
             int what = msg.what;
@@ -203,5 +215,7 @@ public class ShaderDemo extends View {
             invalidate();
             sendEmptyMessageDelayed(what, 2000);
         }
-    };
+    }
+
+
 }
